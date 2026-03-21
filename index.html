@@ -162,7 +162,9 @@
 </div>
 
 <script>
-    const ADMIN_PASS = '@Ser82ik99bor@'; 
+    // --- ОБНОВЛЕННЫЙ ХЕШ (Твой новый пароль) ---
+    const HASH = "69972251f3f4bf0e0a7c57dc735317bf462659d7044bc5e7ad9fd823fdd12b3a";
+    
     const S_URL = 'https://lrzebfypiyuqziitivpm.supabase.co'; 
     const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyemViZnlwaXl1cXppaXRpdnBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MjcxNTMsImV4cCI6MjA4OTQwMzE1M30.Ht-kwqBWH66xG0J_OQUvXKxXrWQIdxfq8O6KWVHBMws';
     const T_NAME = 'Ida-tv-Setuptv-Admin';
@@ -170,13 +172,26 @@
     const supabaseClient = supabase.createClient(S_URL, S_KEY);
     let cache = [];
 
-    function checkPass() {
-        if(document.getElementById('passInput').value === ADMIN_PASS) {
+    // Функция шифрования
+    async function hash(string) {
+        const utf8 = new TextEncoder().encode(string);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Проверка входа
+    async function checkPass() {
+        const input = document.getElementById('passInput').value;
+        const inputHash = await hash(input);
+        if(inputHash === HASH) {
             sessionStorage.setItem('isAuth', 'true');
             document.getElementById('authScreen').style.display = 'none';
             document.getElementById('adminContent').style.display = 'block';
             load();
-        } else { document.getElementById('errorMsg').style.display = 'block'; }
+        } else { 
+            document.getElementById('errorMsg').style.display = 'block'; 
+        }
     }
 
     if(sessionStorage.getItem('isAuth') === 'true') {
@@ -214,9 +229,9 @@
                 <td data-label="Статус"><span class="badge ${c.paymentstatus === 'Продлено' ? 'bg-success' : 'bg-danger'}">${c.paymentstatus}</span></td>
                 <td data-label="Отв.">${c.responsible || '-'}</td>
                 <td>
-                    <button class="btn-act ico-comm" onclick="showMsg('${c.comment || 'Нет комментария'}')">💬</button>
-                    <button class="btn-act ico-edit" onclick="startEdit(${c.id})">✏️</button>
-                    <button class="btn-act ico-del" onclick="remove(${c.id})">🗑️</button>
+                    <button class="btn-act" title="Инфо" onclick="showMsg('${c.comment || 'Нет комментария'}')">💬</button>
+                    <button class="btn-act" title="Править" style="color: #ffc107" onclick="startEdit(${c.id})">✏️</button>
+                    <button class="btn-act" title="Удалить" style="color: #dc3545" onclick="remove(${c.id})">🗑️</button>
                 </td>
             </tr>`;
         });
