@@ -473,12 +473,23 @@
 
     async function checkAutoReset() {
         const today = new Date();
+        const day = today.getDate();
         const currentYearMonth = `${today.getFullYear()}-${today.getMonth() + 1}`;
         const lastReset = localStorage.getItem('lastStatusReset');
-        if (today.getDate() === 1 && lastReset !== currentYearMonth) {
-            await supabaseClient.from(T_NAME).update({ paymentstatus: 'не оплачено' }).eq('paymentstatus', 'Продлено');
-            await supabaseClient.from(T_INT).update({ i_status: 'не оплачено' }).eq('i_status', 'Оплачено');
-            localStorage.setItem('lastStatusReset', currentYearMonth);
+        
+        // Если сегодня 1-е число И мы еще не делали сброс в этом месяце
+        if (day === 1 && lastReset !== currentYearMonth) {
+            try {
+                // Обновляем ТВ клиентов
+                await supabaseClient.from(T_NAME).update({ paymentstatus: 'не оплачено' }).eq('paymentstatus', 'Продлено');
+                // Обновляем Интернет клиентов
+                await supabaseClient.from(T_INT).update({ i_status: 'не оплачено' }).eq('i_status', 'Оплачено');
+                
+                localStorage.setItem('lastStatusReset', currentYearMonth);
+                console.log("Monthly reset completed for " + currentYearMonth);
+            } catch (e) {
+                console.error("Reset error:", e);
+            }
         }
     }
 
