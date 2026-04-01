@@ -177,7 +177,7 @@
             </div>
 
             <div class="row g-2 mb-3 align-items-end">
-                <div class="col-md-6"><input type="text" id="search" class="form-control bg-dark text-white border-secondary" placeholder="Поиск по ТВ..."></div>
+                <div class="col-md-5"><input type="text" id="search" class="form-control bg-dark text-white border-secondary" placeholder="Поиск по ТВ..."></div>
                 <div class="col-6 col-md-2">
                     <select id="month" class="form-select bg-dark text-white border-secondary">
                         <option value="all">Все месяцы</option>
@@ -189,8 +189,9 @@
                         <option value="11">Ноябрь</option><option value="12">Декабрь</option>
                     </select>
                 </div>
-                <div class="col-6 col-md-4">
-                    <button class="btn btn-success w-100 fw-bold" onclick="bulkUpdateStatus()">🔄 МАССОВОЕ ОБНОВЛЕНИЕ</button>
+                <div class="col-6 col-md-5 d-flex gap-2">
+                    <button class="btn btn-success w-100 fw-bold" style="font-size: 11px;" onclick="bulkUpdateStatus('Продлено')">🔄 МАССОВОЕ ПРОДЛЕНИЕ</button>
+                    <button class="btn btn-danger w-100 fw-bold" style="font-size: 11px;" onclick="bulkUpdateStatus('не оплачено')">📉 МАССОВЫЙ СБРОС</button>
                 </div>
             </div>
             <table class="table-custom">
@@ -478,30 +479,25 @@
         const today = new Date();
         const day = today.getDate();
         
-        // Получаем текущий год и месяц для фильтра (например, "2026-04")
         const currentYear = today.getFullYear();
         const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
         const monthString = `${currentYear}-${currentMonth}`;
         
         const lastReset = localStorage.getItem('lastStatusReset');
         
-        // Если сегодня 1-е число И мы еще не делали сброс в этом месяце
         if (day === 1 && lastReset !== monthString) {
             try {
-                // Обновляем ТВ клиентов: ТОЛЬКО тех, у кого статус 'Продлено' И дата истекает в ЭТОМ месяце
                 await supabaseClient.from(T_NAME)
                     .update({ paymentstatus: 'не оплачено' })
                     .eq('paymentstatus', 'Продлено')
                     .like('renewdate', `%${monthString}%`);
 
-                // Обновляем Интернет клиентов: ТОЛЬКО тех, у кого статус 'Оплачено' И дата 'До' попадает в ЭТОТ месяц
                 await supabaseClient.from(T_INT)
                     .update({ i_status: 'не оплачено' })
                     .eq('i_status', 'Оплачено')
                     .like('i_pay_till', `%${monthString}%`);
                 
                 localStorage.setItem('lastStatusReset', monthString);
-                console.log("Monthly smart reset completed for: " + monthString);
             } catch (e) {
                 console.error("Reset error:", e);
             }
@@ -525,20 +521,21 @@
         currentPage = 1; draw();
     }
 
-    async function bulkUpdateStatus() {
+    async function bulkUpdateStatus(newStatus) {
         if (filteredList.length === 0) return alert("Нет данных для обновления!");
-        if (!confirm(`Вы действительно хотите обновить статус для ${filteredList.length} клиентов на "Продлено"?`)) return;
+        const action = newStatus === 'Продлено' ? "Продлить" : "Сбросить в должники";
+        if (!confirm(`Вы действительно хотите ${action} для ${filteredList.length} клиентов?`)) return;
 
         const ids = filteredList.map(item => item.id);
         const { error } = await supabaseClient.from(T_NAME)
-            .update({ paymentstatus: 'Продлено' })
+            .update({ paymentstatus: newStatus })
             .in('id', ids);
 
         if (error) {
             alert("Ошибка при массовом обновлении!");
             console.error(error);
         } else {
-            alert("Статусы успешно обновлены!");
+            alert("Обновление завершено!");
             load();
         }
     }
