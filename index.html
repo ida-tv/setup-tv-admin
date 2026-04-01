@@ -474,19 +474,31 @@
     async function checkAutoReset() {
         const today = new Date();
         const day = today.getDate();
-        const currentYearMonth = `${today.getFullYear()}-${today.getMonth() + 1}`;
+        
+        // Получаем текущий год и месяц для фильтра (например, "2026-04")
+        const currentYear = today.getFullYear();
+        const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+        const monthString = `${currentYear}-${currentMonth}`;
+        
         const lastReset = localStorage.getItem('lastStatusReset');
         
         // Если сегодня 1-е число И мы еще не делали сброс в этом месяце
-        if (day === 1 && lastReset !== currentYearMonth) {
+        if (day === 1 && lastReset !== monthString) {
             try {
-                // Обновляем ТВ клиентов
-                await supabaseClient.from(T_NAME).update({ paymentstatus: 'не оплачено' }).eq('paymentstatus', 'Продлено');
-                // Обновляем Интернет клиентов
-                await supabaseClient.from(T_INT).update({ i_status: 'не оплачено' }).eq('i_status', 'Оплачено');
+                // Обновляем ТВ клиентов: ТОЛЬКО тех, у кого статус 'Продлено' И дата истекает в ЭТОМ месяце
+                await supabaseClient.from(T_NAME)
+                    .update({ paymentstatus: 'не оплачено' })
+                    .eq('paymentstatus', 'Продлено')
+                    .like('renewdate', `%${monthString}%`);
+
+                // Обновляем Интернет клиентов: ТОЛЬКО тех, у кого статус 'Оплачено' И дата 'До' попадает в ЭТОТ месяц
+                await supabaseClient.from(T_INT)
+                    .update({ i_status: 'не оплачено' })
+                    .eq('i_status', 'Оплачено')
+                    .like('i_pay_till', `%${monthString}%`);
                 
-                localStorage.setItem('lastStatusReset', currentYearMonth);
-                console.log("Monthly reset completed for " + currentYearMonth);
+                localStorage.setItem('lastStatusReset', monthString);
+                console.log("Monthly smart reset completed for: " + monthString);
             } catch (e) {
                 console.error("Reset error:", e);
             }
