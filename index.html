@@ -176,9 +176,9 @@
                 </form>
             </div>
 
-            <div class="row g-2 mb-3">
-                <div class="col-8 col-md-9"><input type="text" id="search" class="form-control bg-dark text-white border-secondary" placeholder="Поиск по ТВ..."></div>
-                <div class="col-4 col-md-3">
+            <div class="row g-2 mb-3 align-items-end">
+                <div class="col-md-6"><input type="text" id="search" class="form-control bg-dark text-white border-secondary" placeholder="Поиск по ТВ..."></div>
+                <div class="col-6 col-md-2">
                     <select id="month" class="form-select bg-dark text-white border-secondary">
                         <option value="all">Все месяцы</option>
                         <option value="01">Январь</option><option value="02">Февраль</option>
@@ -188,6 +188,9 @@
                         <option value="09">Сентябрь</option><option value="10">Октябрь</option>
                         <option value="11">Ноябрь</option><option value="12">Декабрь</option>
                     </select>
+                </div>
+                <div class="col-6 col-md-4">
+                    <button class="btn btn-success w-100 fw-bold" onclick="bulkUpdateStatus()">🔄 МАССОВОЕ ОБНОВЛЕНИЕ</button>
                 </div>
             </div>
             <table class="table-custom">
@@ -520,6 +523,24 @@
             return matchesSearch && matchesMonth;
         });
         currentPage = 1; draw();
+    }
+
+    async function bulkUpdateStatus() {
+        if (filteredList.length === 0) return alert("Нет данных для обновления!");
+        if (!confirm(`Вы действительно хотите обновить статус для ${filteredList.length} клиентов на "Продлено"?`)) return;
+
+        const ids = filteredList.map(item => item.id);
+        const { error } = await supabaseClient.from(T_NAME)
+            .update({ paymentstatus: 'Продлено' })
+            .in('id', ids);
+
+        if (error) {
+            alert("Ошибка при массовом обновлении!");
+            console.error(error);
+        } else {
+            alert("Статусы успешно обновлены!");
+            load();
+        }
     }
 
     function filterByStatus(type, status) {
