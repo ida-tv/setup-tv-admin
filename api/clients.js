@@ -1,47 +1,56 @@
-import { db } from '@vercel/postgres';
+import { MongoClient } from 'mongodb';
 
 export default async function handler(req, res) {
-  // Настройка разрешений, чтобы данные могли приходить извне
+  // Разрешаем запросы со всех доменов (CORS)
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  const client = await db.connect();
+  const client = new MongoClient(process.env.MONGODB_URI);
 
-  // --- ПОЛУЧЕНИЕ ДАННЫХ ОТ GOOGLE ТАБЛИЦЫ ---
-  if (req.method === 'POST') {
-    const { name, address, phone, nick, email, arve_nr, amount, status } = req.body;
-    
-    try {
-      await client.sql`
-        INSERT INTO clients (name, address, phone, nick, email, arve_nr, amount, status)
-        VALUES (${name}, ${address}, ${phone}, ${nick}, ${email}, ${arve_nr}, ${amount}, ${status})
-        ON CONFLICT (nick) 
-        DO UPDATE SET 
-          status = ${status}, 
-          amount = ${amount},
-          updated_at = CURRENT_TIMESTAMP;
-      `;
-      return res.status(200).json({ success: true });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: error.message });
+  try {
+    await client.connect();
+    const db = client.db('iptv_db'); // Убедись, что название базы данных верное
+    const collection = db.collection('clients');
+
+    if (req.method === 'GET') {
+      const clients = await collection.find({}).toArray();
+      return res.status(200).json(clients);
     }
-  }
 
-  // --- ОТДАЧА ДАННЫХ НА ВАШ САЙТ ---
-  if (req.method === 'GET') {
-    try {
-      const { rows } = await client.sql`SELECT * FROM clients ORDER BY updated_at DESC`;
-      return res.status(200).json(rows);
-    } catch (error) {
-      return res.status(500).json({ error: 'Database error' });
+    if (req.method === 'POST') {
+      const { nick, status, price, renewalDate } = req.body;
+
+      if (!nick) {
+        return res.status(400).json({ error: 'Ник обязателен' });
+      }
+
+      // Ищем клиента по нику и обновляем его данные
+      const result = await collection.updateOne(
+        { nick: nick },
+        { 
+          $set: { 
+            status: status, 
+            price: price, 
+            renewalDate: renewalDate,
+            updatedAt: new Date() 
+          } 
+        },
+        { upsert: true } // Если клиента нет, он будет создан
+      );
+
+      console.log(`Обновлен клиент: ${nick}, Статус: ${status}`);
+      return res.status(200).json({ message: 'Статус обновлен', result });
     }
-  }
 
-  return res.status(405).json({ error: 'Method not allowed' });
+  } catch (error) {
+    console.error('Ошибка сервера:', error);
+    return res.status(500).json({ error: 'Ошибка базы данных', details: error.message });
+  } finally {
+    await client.close();
+  }
 }
