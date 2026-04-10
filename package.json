@@ -1,0 +1,11 @@
+{
+  "name": "setup-tv-admin",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node api/clients.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.0.0"
+  }
+}
